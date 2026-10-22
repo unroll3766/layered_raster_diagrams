@@ -1,0 +1,46 @@
+INPUTS
+  layers         : any mix of multiband TIFFs, single-band images, or arrays
+  size (w, h)    : common size every layer is resampled to   (default: first layer's size)
+  canvas (W, H)  : size of the output image                  (default: same as size)
+  z              : minimum vertical gap between layers, in pixels
+  layer_height d : projected height of one tilted layer      (optional)
+  mid_left       : x-position of each diamond's bottom corner, as a fraction of W (default 1/3)
+  mid_right      : x-position of each diamond's top corner,    as a fraction of W (default 2/3)
+
+1. LOAD
+   Split every input into individual 2-D bands, in order, giving n bands.
+   Stretch each band to 0–255 for display (e.g. 2nd–98th percentile).
+   Resize each band to (w, h) with bilinear resampling.
+
+2. SPACING
+   If d is not given:
+       spacing = z
+       d = H − (n−1)·z
+       if d is too small → error: too many layers for this gap
+   Else:
+       spacing = (H − d) / (n−1)
+       if spacing < z    → error: too many layers for this gap
+
+3. GEOMETRY  (for each layer i = 0 … n−1, with i = 0 at the top)
+   y = i · spacing                         # top edge of this layer's diamond
+   Map the image's corners onto a diamond:
+       image top-left     (0, 0) → top vertex     (mid_right·W, y)
+       image top-right    (w, 0) → right vertex   (W,           y + d/2)
+       image bottom-right (w, h) → bottom vertex  (mid_left·W,  y + d)
+       image bottom-left  (0, h) → left vertex    (0,           y + d/2)
+   So the image's top edge runs along the diamond's upper-right side
+   and its bottom edge along the lower-left side.
+
+4. RENDER
+   Start with a transparent W × H canvas.
+   For each layer from the bottom of the stack up to the top:
+       compute the perspective transform from the image corners to the diamond corners
+       warp the layer (bilinear), with transparency outside the diamond
+       optionally draw an outline around the diamond
+       composite it over the canvas, so upper layers cover the ones below
+
+5. OUTPUT
+   The RGBA image, plus each layer's four diamond corners,
+   which you can use to place labels beside each layer.
+
+                                                              
